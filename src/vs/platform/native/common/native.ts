@@ -157,6 +157,10 @@ export interface ICommonNativeHostService {
 	hasClipboard(format: string, type?: 'selection' | 'clipboard'): Promise<boolean>;
 	readImage(): Promise<Uint8Array>;
 
+	// Display media
+	setDisplayMediaSelection(options: { activeWindow: boolean }): Promise<void>;
+	getAndClearDisplayMediaSelection(): Promise<{ activeWindow: boolean } | undefined>;
+
 	// macOS Touchbar
 	newWindowTab(): Promise<void>;
 	showPreviousWindowTab(): Promise<void>;

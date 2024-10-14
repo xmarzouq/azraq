@@ -209,7 +209,18 @@ export class CodeApplication extends Disposable {
 			const windowBounds = focusedWindow.getBounds();
 
 			// Get all the screen sources
-			const screens = await desktopCapturer.getSources({ types: ['screen'] });
+			const sources = await desktopCapturer.getSources({
+				types: ['screen', 'window'],
+				fetchWindowIcons: false,
+			});
+
+			const useActiveWindow = (await this.nativeHostMainService?.getAndClearDisplayMediaSelection(focusedWindow.id))?.activeWindow ?? false;
+			if (!useActiveWindow) {
+				return;
+			}
+			const video = sources.filter(e => e.id.match(`^window:0*${windowId.windowId.toString()}:\d+$`))[0];
+			callback({ video, audio: 'loopback' });
+
 
 			// Get the display that contains the focused window
 			const displays = screen.getAllDisplays();
@@ -232,7 +243,7 @@ export class CodeApplication extends Disposable {
 					windowCenter.y <= displayBounds.y + displayBounds.height
 				) {
 					// Match the display to the screen source
-					for (const source of screens) {
+					for (const source of sources) {
 						if (source.display_id === display.id.toString()) {
 							// Found the screen containing the focused window
 							callback({ video: source, audio: 'loopback' });
@@ -243,7 +254,7 @@ export class CodeApplication extends Disposable {
 			}
 
 			// Fallback: if no matching screen is found, return the first screen
-			callback({ video: screens[0], audio: 'loopback' });
+			callback({ video: sources[0], audio: 'loopback' });
 		});
 
 		//#endregion

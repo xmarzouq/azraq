@@ -731,6 +731,23 @@ export class NativeHostMainService extends Disposable implements INativeHostMain
 	//#endregion
 
 
+	//#region Display media
+
+	private _displayMediaSelection?: { activeWindow: boolean };
+	async getAndClearDisplayMediaSelection(): Promise<{ activeWindow: boolean } | undefined> {
+		const value = this._displayMediaSelection;
+		this._displayMediaSelection = undefined;
+		return value;
+	}
+
+	async setDisplayMediaSelection(windowId: number | undefined, options: { activeWindow: boolean }): Promise<void> {
+		this._displayMediaSelection = options;
+	}
+
+	//#endregion
+
+
+
 	//#region macOS Touchbar
 
 	async newWindowTab(): Promise<void> {

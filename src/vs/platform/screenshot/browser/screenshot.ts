@@ -6,6 +6,7 @@
 import { addDisposableListener, getActiveWindow } from '../../../base/browser/dom.js';
 import { DisposableStore, toDisposable } from '../../../base/common/lifecycle.js';
 import { localize } from '../../../nls.js';
+import type { INativeHostService } from '../../native/common/native.js';
 
 interface IBoundingBox {
 	x: number;
@@ -33,8 +34,8 @@ class BoundingBox implements IBoundingBox {
 	get bottom() { return this.y + this.height; }
 }
 
-export async function getScreenshotAsVariable(): Promise<IScreenshotVariableEntry | undefined> {
-	const screenshot = await generateFocusedWindowScreenshot();
+export async function getScreenshotAsVariable(nativeHostService: INativeHostService, windowId?: number): Promise<IScreenshotVariableEntry | undefined> {
+	const screenshot = await generateWindowScreenshot(nativeHostService, windowId);
 	if (!screenshot) {
 		return;
 	}
@@ -48,20 +49,16 @@ export async function getScreenshotAsVariable(): Promise<IScreenshotVariableEntr
 	};
 }
 
-export async function generateFocusedWindowScreenshot(): Promise<ArrayBuffer | undefined> {
+export async function generateWindowScreenshot(nativeHostService: INativeHostService, windowId?: number): Promise<ArrayBuffer | undefined> {
 	try {
-		const windowBounds = getActiveWindowBounds();
-		if (!windowBounds) {
-			return;
-		}
-		return takeScreenshotOfDisplay(windowBounds);
+		return takeScreenshot(nativeHostService, windowId);
 	} catch (err) {
 		console.error('Error taking screenshot:', err);
 		return undefined;
 	}
 }
 
-async function takeScreenshotOfDisplay(cropDimensions?: IBoundingBox): Promise<ArrayBuffer | undefined> {
+async function takeScreenshot(nativeHostService: INativeHostService, windowId?: number): Promise<ArrayBuffer | undefined> {
 	const windowBounds = getActiveWindowBounds();
 	if (!windowBounds) {
 		return undefined;
@@ -76,6 +73,10 @@ async function takeScreenshotOfDisplay(cropDimensions?: IBoundingBox): Promise<A
 		// TODO: This needs to get the stream for the actual window when strictly taking a
 		//       screenshot of the window, so as to not leak windows in the foreground (eg. a always
 		//       on top video)
+		if (windowId !== undefined) {
+			await nativeHostService.setDisplayMediaSelection({ activeWindow: true });
+		}
+
 		// Create a stream from the screen source (capture screen without audio)
 		stream = await navigator.mediaDevices.getDisplayMedia({
 			audio: false,
@@ -93,12 +94,12 @@ async function takeScreenshotOfDisplay(cropDimensions?: IBoundingBox): Promise<A
 		]);
 
 		// Create a canvas element with the size of the cropped region
-		if (!cropDimensions) {
-			cropDimensions = new BoundingBox(0, 0, video.videoWidth, video.videoHeight);
-		}
+		// if (!cropDimensions) {
+		// 	cropDimensions = new BoundingBox(0, 0, video.videoWidth, video.videoHeight);
+		// }
 		const canvas = document.createElement('canvas');
-		canvas.width = cropDimensions.width;
-		canvas.height = cropDimensions.height;
+		canvas.width = video.videoWidth;
+		canvas.height = video.videoHeight;
 
 		const ctx = canvas.getContext('2d');
 		if (!ctx) {
@@ -106,12 +107,7 @@ async function takeScreenshotOfDisplay(cropDimensions?: IBoundingBox): Promise<A
 		}
 
 		// Draw the portion of the video (x, y) with the specified width and height
-		ctx.drawImage(video,
-			// Source
-			cropDimensions.x, cropDimensions.y, cropDimensions.width, cropDimensions.height,
-			// Dest
-			0, 0, cropDimensions.width, cropDimensions.height,
-		);
+		ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
 		// Convert the canvas to a Blob (JPEG format), use .95 for quality
 		const blob: Blob | null = await new Promise((resolve) => canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.95));
