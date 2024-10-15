@@ -64,22 +64,11 @@ steps:
       AZURE_CLIENT_SECRET: "$(AZURE_CLIENT_SECRET)"
     displayName: Create build if it hasn't been created before
 
-  - pwsh: |
-      $ErrorActionPreference = "Stop"
-      $CertCollection = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2Collection
-      $AuthCertBytes = [System.Convert]::FromBase64String("$(vscode-esrp)")
-      $CertCollection.Import($AuthCertBytes, $null, [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable -bxor [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::PersistKeySet)
-      $RequestSigningCertIndex = $CertCollection.Count
-      $RequestSigningCertBytes = [System.Convert]::FromBase64String("$(c24324f7-e65f-4c45-8702-ed2d4c35df99)")
-      $CertCollection.Import($RequestSigningCertBytes, $null, [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable -bxor [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::PersistKeySet)
-      $CertStore = New-Object System.Security.Cryptography.X509Certificates.X509Store("My","LocalMachine")
-      $CertStore.Open("ReadWrite")
-      $CertStore.AddRange($CertCollection)
-      $CertStore.Close()
-      $AuthCertSubjectName = $CertCollection[0].Subject
-      $RequestSigningCertSubjectName = $CertCollection[$RequestSigningCertIndex].Subject
-      Write-Host "##vso[task.setvariable variable=RELEASE_AUTH_CERT_SUBJECT_NAME]$AuthCertSubjectName"
-      Write-Host "##vso[task.setvariable variable=RELEASE_REQUEST_SIGNING_CERT_SUBJECT_NAME]$RequestSigningCertSubjectName"
+  - task: PowerShell@2
+    inputs:
+      filePath: common/import-certs.ps1
+      errorActionPreference: stop
+      pwsh: true
     displayName: Import certificates
 
   - pwsh: node build/azure-pipelines/common/publish.js
@@ -108,8 +97,6 @@ steps:
     condition: always()
 
   - pwsh: |
-      $ErrorActionPreference = 'Stop'
-
       # Determine which stages we need to watch
       $stages = @(
         if ($env:VSCODE_BUILD_STAGE_WINDOWS -eq 'True') { 'Windows' }
@@ -144,6 +131,7 @@ steps:
       if ($failedStages.Length) {
         throw "Failed stages: $($failedStages -join ', '). This stage will now fail so that it is easier to retry failed jobs."
       }
+    errorActionPreference: stop
     env:
       SYSTEM_ACCESSTOKEN: $(System.AccessToken)
     displayName: Determine if stage should succeed
