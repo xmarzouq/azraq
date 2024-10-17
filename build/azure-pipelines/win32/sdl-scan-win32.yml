@@ -131,12 +131,12 @@ steps:
       AnalyzeLocalSymbolDirectories: '$(Agent.BuildDirectory)\scanbin\VSCode-win32-${{ parameters.VSCODE_ARCH }}\pdb'
 
   - task: CopyFiles@2
-    displayName: 'Collect Symbols for API Scan'
     inputs:
       SourceFolder: $(Agent.BuildDirectory)
       Contents: 'scanbin\**\*.pdb'
       TargetFolder: '$(Agent.BuildDirectory)\symbols'
       flattenFolders: true
+    displayName: 'Collect Symbols for API Scan'
     condition: succeeded()
 
   - task: PublishSymbols@2
@@ -145,6 +145,9 @@ steps:
       SymbolsFolder: '$(Agent.BuildDirectory)\symbols'
       SearchPattern: '**\*.pdb'
       SymbolServerType: TeamServices
+    env:
+      ARTIFACTSERVICES_SYMBOL_ACCOUNTNAME: microsoft
+      ARTIFACTSERVICES_SYMBOL_USEAAD: true
     displayName: Publish Symbols
     condition: succeeded()
 
