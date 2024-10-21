@@ -169,5 +169,8 @@
 	"css.format.spaceAroundSelectorSeparator": true,
 	"typescript.enablePromptUseWorkspaceTsdk": true,
 	"chat.commandCenter.enabled": true,
-	"eslint.useFlatConfig": true
+	"eslint.useFlatConfig": true,
+	"cSpell.words": [
+		"azraq"
+	]
 }
